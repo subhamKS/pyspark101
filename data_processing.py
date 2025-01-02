@@ -51,12 +51,28 @@ def transf(df1,df2,spark):
     df_joined = df_intrm.join(df2_rep,(df_intrm['state_id']==df2_rep['presc_state']) & (df_intrm['city']==df2_rep['presc_city']),'inner')
     df_joined.select(['city','state_id','state_name','zipslen','dist_presc_id','tot_tx']).show(5)
     df_joined.createOrReplaceTempView('cte')
-    spec = Window.partitionBy('state_name').orderBy(desc(col('tot_tx')))
-    df2_rep2 = df_joined.withColumn('rank',rank().over(spec))
-    # df2_rep2 = spark.sql('select *,state_name ,tot_tx, Rank() over(partition by state_name order by tot_tx desc) as rn from cte')
-    df2_rep2.filter('rank<=5').show(20)
     print(df_joined.count())
     # df_city = df1.groupby('city').
     # df_city.show()
+
+def windowPartition(df1,df2,spark):
+
+    #creating over by clause
+    spec = Window.partitionBy('presc_state').orderBy(desc(col('tx_count')))
+
+    #Before filter count
+    print(df2.count())
+
+    # Filttering presc by years_of_exp
+    df2 = df2.filter((df2['years_of_exp'] > 20) & (df2['years_of_exp'] < 50))
+
+    #After Filter count
+    print(df2.count())
+
+    df2_rep2 = df2.withColumn('rank',dense_rank().over(spec))
+    df2_rep2 = df2_rep2.join(df1,(df1['state_id']==df2_rep2['presc_state']) & (df1['city']==df2_rep2['presc_city']), 'inner')
+    df2_rep2 = df2_rep2.select(['presc_fullname','city','presc_state','years_of_exp','tx_count','rank'])
+    df2_rep2.filter('rank<=5').show(20)
+
 
 

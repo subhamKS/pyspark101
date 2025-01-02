@@ -17,7 +17,8 @@ def main():
     df_presc.printSchema()
     # df_city.show(5)
     # df_presc.show(5)
-    dp.transf(df_city,df_presc,spark)
+    # dp.transf(df_city,df_presc,spark)
+    dp.windowPartition(df_city,df_presc,spark)
 
 if __name__ == '__main__':
     main()
