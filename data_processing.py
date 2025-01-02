@@ -51,10 +51,10 @@ def transf(df1,df2,spark):
     df_joined = df_intrm.join(df2_rep,(df_intrm['state_id']==df2_rep['presc_state']) & (df_intrm['city']==df2_rep['presc_city']),'inner')
     df_joined.select(['city','state_id','state_name','zipslen','dist_presc_id','tot_tx']).show(5)
     df_joined.createOrReplaceTempView('cte')
-    spec = Window.partitionBy('state_name').orderBy(col('tot_tx'),desc())
+    spec = Window.partitionBy('state_name').orderBy(desc(col('tot_tx')))
     df2_rep2 = df_joined.withColumn('rank',rank().over(spec))
     # df2_rep2 = spark.sql('select *,state_name ,tot_tx, Rank() over(partition by state_name order by tot_tx desc) as rn from cte')
-    df2_rep2.filter('rn<=5').show(20)
+    df2_rep2.filter('rank<=5').show(20)
     print(df_joined.count())
     # df_city = df1.groupby('city').
     # df_city.show()

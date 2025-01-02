@@ -9,8 +9,8 @@ def main():
     print("Inside Main: \n")
     spark = SparkSession.builder.appName(env.env+'App').getOrCreate()
     # validate_obj(spark)
-    citydf = spark.read.parquet('C:\\Users\\KIIT\\Desktop\\Nov@2024\\prcte\\PysparkPrac\\source\\us_cities_dimension.parquet',header=env.header)
-    presdf = spark.read.csv('C:\\Users\\KIIT\Desktop\\Nov@2024\prcte\\PysparkPrac\\source\\USA_Presc_Medicare_Data_12021.csv',header=env.header,\
+    citydf = spark.read.parquet('C:\\Users\\KIIT\\Desktop\\Nov@2024\\source\\us_cities_dimension.parquet',header=env.header)
+    presdf = spark.read.csv('C:\\Users\\KIIT\Desktop\\Nov@2024\\source\\USA_Presc_Medicare_Data_12021.csv',header=env.header,\
                          inferSchema=env.inferschema)
     df_city,df_presc = dp.data_clean(citydf,presdf) # After basic cleaning and pre-processing
     df_city.printSchema()
