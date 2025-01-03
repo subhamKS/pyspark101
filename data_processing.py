@@ -1,5 +1,6 @@
 from pyspark.sql.functions import *
 from pyspark.sql.window import Window
+# import pandas as pd
 
 def data_clean(df1,df2):
     
@@ -24,9 +25,9 @@ def data_clean(df1,df2):
     df_presc = df_presc.withColumn('country_name',lit('USA'))
     df_presc = df_presc.withColumn('years_of_exp',regexp_replace(col('years_of_exp'),'=','').cast('int'))
     df_presc = df_presc.withColumn('presc_fullname',concat(col('presc_fname'),lit(' '),col('presc_lname')))
-    print("Scema ->>")
+    # print("Scema ->>")
     # df_presc.printSchema()
-    print("Null Count for both dfs: ")
+    # print("Null Count for both dfs: ")
 
 
     df_presc = df_presc.dropna(subset = ['presc_id','drug_name'])
@@ -38,22 +39,25 @@ def data_clean(df1,df2):
     return df_city,df_presc
 
 def transf(df1,df2,spark):
+
     #Calculate no. of zips per city 
-    df_intrm = df1.withColumn('zipslen',size(split(col('zips'),' '))) 
-    df_intrm.show(5)
+    df_city_transf = df1.withColumn('zipslen',size(split(col('zips'),' '))) 
+    # df_city_transf.show(5)
 
     #distinct prescb. and tx_cnt according to state and city 
-    df2.createOrReplaceTempView('cte')
-    df2_rep = spark.sql('Select presc_state,presc_city, count( distinct presc_id) as dist_presc_id, sum(tx_count) as \
-                        tot_tx from cte group by presc_state,presc_city')
-    df2_rep.show(5)
+    df_presc_transf = df2.groupby('presc_state','presc_city').agg(countDistinct('presc_id').alias('dist_presc_id'),sum('tx_count').alias('tot_tx'))
+    # df2.createOrReplaceTempView('cte')
+    # df2_rep = spark.sql('Select presc_state,presc_city, count( distinct presc_id) as dist_presc_id, sum(tx_count) as \
+    #                     tot_tx from cte group by presc_state,presc_city')
+    # df_presc_transf.show(5)
 
-    df_joined = df_intrm.join(df2_rep,(df_intrm['state_id']==df2_rep['presc_state']) & (df_intrm['city']==df2_rep['presc_city']),'inner')
-    df_joined.select(['city','state_id','state_name','zipslen','dist_presc_id','tot_tx']).show(5)
-    df_joined.createOrReplaceTempView('cte')
-    print(df_joined.count())
-    # df_city = df1.groupby('city').
-    # df_city.show()
+    df_joined = df_city_transf.join(df_presc_transf,(df_city_transf['state_id']==df_presc_transf['presc_state']) & (df_city_transf['city']==df_presc_transf['presc_city']),'inner')
+    # df_joined.select(['city','state_id','state_name','zipslen','dist_presc_id','tot_tx']).show(5)
+    
+    # df_joined.select(['city','state_id','state_name','zipslen','dist_presc_id','tot_tx']).orderBy(desc(col('tot_tx'))).show()
+    # print(df_joined.count())
+    
+    return df_city_transf,df_presc_transf,df_joined
 
 def windowPartition(df1,df2,spark):
 
@@ -73,6 +77,17 @@ def windowPartition(df1,df2,spark):
     df2_rep2 = df2_rep2.join(df1,(df1['state_id']==df2_rep2['presc_state']) & (df1['city']==df2_rep2['presc_city']), 'inner')
     df2_rep2 = df2_rep2.select(['presc_fullname','city','presc_state','years_of_exp','tx_count','rank'])
     df2_rep2.filter('rank<=5').show(20)
+
+def reporting(df_joined):
+    df_joined.printSchema()
+    df_rep = df_joined.select(['city','state_id','state_name','population','zipslen','dist_presc_id','tot_tx'])
+    df_rep = df_rep.orderBy(desc(col('tot_tx')))
+    df_rep = df_rep.withColumn('tot_tx',concat(lit(' $ '),format_number(col('tot_tx'),0)))
+    df_rep = df_rep.withColumn('population',format_number(col('population'),0))
+
+    return df_rep
+
+
 
 
 
